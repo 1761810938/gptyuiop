@@ -1042,7 +1042,13 @@ function getRequestMessages(conversation, assistantMessageId) {
 }
 
 function extractAssistantText(payload) {
-  const message = payload?.choices?.[0]?.message;
+  const choice = payload?.choices?.[0];
+  const message = choice?.message;
+
+  if (typeof choice?.text === 'string') {
+    return choice.text;
+  }
+
   if (!message) {
     throw new Error('接口返回中没有 choices[0].message');
   }
@@ -1054,12 +1060,38 @@ function extractAssistantText(payload) {
   if (Array.isArray(message.content)) {
     return message
       .content
-      .map((item) => item?.text || '')
+      .map((item) => item?.text || item?.content || '')
       .join('\n')
       .trim();
   }
 
+  if (typeof message.reasoning_content === 'string') {
+    return message.reasoning_content;
+  }
+
   return JSON.stringify(message.content, null, 2);
+}
+
+function extractStreamDelta(json) {
+  const delta = json?.choices?.[0]?.delta;
+
+  if (typeof delta?.content === 'string') {
+    return delta.content;
+  }
+
+  if (Array.isArray(delta?.content)) {
+    return delta.content.map((item) => item?.text || item?.content || '').join('');
+  }
+
+  if (typeof delta?.reasoning_content === 'string') {
+    return delta.reasoning_content;
+  }
+
+  if (typeof json?.choices?.[0]?.text === 'string') {
+    return json.choices[0].text;
+  }
+
+  return '';
 }
 
 function parseStreamEventPayload(payload) {
@@ -1172,8 +1204,8 @@ async function sendWithStream(requestBody, conversation, assistantMessage) {
         continue;
       }
 
-      const delta = json?.choices?.[0]?.delta?.content;
-      if (typeof delta === 'string' && delta) {
+      const delta = extractStreamDelta(json);
+      if (delta) {
         appendAssistantDelta(assistantMessage, delta);
       }
     }
@@ -1263,6 +1295,10 @@ async function sendMessage() {
     if (state.settings.streamMode) {
       try {
         await sendWithStream(requestBody, conversation, assistantMessage);
+        if (!extractMessageText(assistantMessage.content).trim()) {
+          setStatus('流式输出为空，已自动切换普通模式');
+          await sendWithStandardRequest(requestBody, conversation, assistantMessage);
+        }
       } catch (streamError) {
         if (extractMessageText(assistantMessage.content)) {
           throw streamError;
