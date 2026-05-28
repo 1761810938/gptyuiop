@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'openai-compatible-web-chat';
-const DEFAULT_BASE_URL = 'https://aiapi.setbug.cn';
+const DEFAULT_BASE_URL = '/v1';
 const DEFAULT_PROXY_BASE_URL = '';
 const DEFAULT_THEME = 'light';
 const DEFAULT_REASONING_EFFORT = 'auto';
@@ -98,6 +98,11 @@ function normalizeBaseUrlValue(value) {
 
 function normalizeApiBaseUrl(value) {
   const normalized = normalizeBaseUrlValue(value).replace(/\/+$/, '');
+
+  if (normalized.startsWith('/')) {
+    return normalized.endsWith('/v1') ? normalized : `${normalized}/v1`;
+  }
+
   return normalized.endsWith('/v1') ? normalized : `${normalized}/v1`;
 }
 
