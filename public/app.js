@@ -118,7 +118,16 @@ function getApiHeaders(apiKey) {
 }
 
 function buildApiRequestBody(requestBody) {
-  const { baseUrl, apiKey, ...apiRequestBody } = requestBody;
+  const { baseUrl, apiKey, reasoning_effort, max_tokens, ...apiRequestBody } = requestBody;
+
+  if (typeof max_tokens === 'number' && Number.isFinite(max_tokens) && max_tokens > 0) {
+    apiRequestBody.max_tokens = max_tokens;
+  }
+
+  if (typeof reasoning_effort === 'string' && reasoning_effort && reasoning_effort !== 'auto') {
+    apiRequestBody.reasoning_effort = reasoning_effort;
+  }
+
   return apiRequestBody;
 }
 
@@ -1073,7 +1082,8 @@ function extractAssistantText(payload) {
 }
 
 function extractStreamDelta(json) {
-  const delta = json?.choices?.[0]?.delta;
+  const choice = json?.choices?.[0];
+  const delta = choice?.delta;
 
   if (typeof delta?.content === 'string') {
     return delta.content;
@@ -1087,8 +1097,20 @@ function extractStreamDelta(json) {
     return delta.reasoning_content;
   }
 
-  if (typeof json?.choices?.[0]?.text === 'string') {
-    return json.choices[0].text;
+  if (typeof choice?.message?.content === 'string') {
+    return choice.message.content;
+  }
+
+  if (Array.isArray(choice?.message?.content)) {
+    return choice.message.content.map((item) => item?.text || item?.content || '').join('');
+  }
+
+  if (typeof choice?.message?.reasoning_content === 'string') {
+    return choice.message.reasoning_content;
+  }
+
+  if (typeof choice?.text === 'string') {
+    return choice.text;
   }
 
   return '';
@@ -1124,6 +1146,47 @@ function parseStreamEventPayload(payload) {
   };
 }
 
+function splitStreamSegments(buffer) {
+  const normalized = buffer.replace(/\r\n/g, '\n');
+  const segments = normalized.split(/\n\n+/);
+  return {
+    segments: segments.slice(0, -1),
+    remainder: segments.at(-1) || ''
+  };
+}
+
+function handleStreamSegment(segment, assistantMessage) {
+  const parsed = parseStreamEventPayload(segment);
+  if (!parsed || !parsed.data) {
+    return;
+  }
+
+  if (parsed.eventName === 'error') {
+    try {
+      const errorPayload = JSON.parse(parsed.data);
+      throw new Error(errorPayload.error || '流式响应出错');
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('流式响应出错');
+    }
+  }
+
+  if (parsed.data === '[DONE]') {
+    return;
+  }
+
+  let json;
+  try {
+    json = JSON.parse(parsed.data);
+  } catch {
+    return;
+  }
+
+  const delta = extractStreamDelta(json);
+  if (delta) {
+    appendAssistantDelta(assistantMessage, delta);
+  }
+}
+
 function appendAssistantDelta(message, delta) {
   message.content = `${extractMessageText(message.content)}${delta}`;
   render();
@@ -1152,7 +1215,7 @@ async function sendWithStream(requestBody, conversation, assistantMessage) {
   const response = await fetch(`${normalizeApiBaseUrl(requestBody.baseUrl)}/chat/completions`, {
     method: 'POST',
     headers: getApiHeaders(requestBody.apiKey),
-    body: JSON.stringify(buildApiRequestBody(requestBody))
+    body: JSON.stringify(buildApiRequestBody({ ...requestBody, stream: true }))
   });
 
   if (!response.ok) {
@@ -1175,40 +1238,17 @@ async function sendWithStream(requestBody, conversation, assistantMessage) {
     }
 
     buffer += decoder.decode(value, { stream: true });
-    const segments = buffer.split('\n\n');
-    buffer = segments.pop() || '';
+    const result = splitStreamSegments(buffer);
+    buffer = result.remainder;
 
-    for (const segment of segments) {
-      const parsed = parseStreamEventPayload(segment);
-      if (!parsed || !parsed.data) {
-        continue;
-      }
-
-      if (parsed.eventName === 'error') {
-        try {
-          const errorPayload = JSON.parse(parsed.data);
-          throw new Error(errorPayload.error || '流式响应出错');
-        } catch (error) {
-          throw error instanceof Error ? error : new Error('流式响应出错');
-        }
-      }
-
-      if (parsed.data === '[DONE]') {
-        continue;
-      }
-
-      let json;
-      try {
-        json = JSON.parse(parsed.data);
-      } catch {
-        continue;
-      }
-
-      const delta = extractStreamDelta(json);
-      if (delta) {
-        appendAssistantDelta(assistantMessage, delta);
-      }
+    for (const segment of result.segments) {
+      handleStreamSegment(segment, assistantMessage);
     }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    handleStreamSegment(buffer, assistantMessage);
   }
 }
 
