@@ -1,0 +1,7 @@
+name = "gptyuiop"
+main = "cloudflare/site-worker.js"
+compatibility_date = "2026-05-28"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
