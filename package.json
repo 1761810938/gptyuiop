@@ -1,0 +1,11 @@
+{
+  "name": "openai-compatible-web-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "网页版 OpenAI 兼容聊天客户端",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('public','dist',{recursive:true})\""
+  }
+}

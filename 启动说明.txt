@@ -1,0 +1,40 @@
+给别人使用时，建议整个项目文件夹一起发送，或者按下面的“最终可发送目录清单”整理后再发送。
+
+最简单的用法：
+1. 你先把免安装版 Node 整个放到 `runtime/node` 目录
+2. 对方双击 `双击启动.bat`
+3. 程序会自动打开浏览器并访问 `http://127.0.0.1:8787`
+
+启动逻辑：
+- 优先使用 `runtime/node/node.exe`
+- 如果没有便携 Node，则尝试使用系统已安装的 `node`
+- 如果两者都没有，会提示用户补充 Node 运行时
+- 如果网页已经在运行，会直接打开浏览器，不会重复启动
+- 如果 `8787` 端口被其他程序占用，会提示用户，不会强行启动
+
+推荐的免安装 Node 准备方式：
+1. 下载 Windows x64 版 Node.js 的 zip 压缩包
+2. 解压后得到完整的 Node 目录
+3. 把整个目录放到：`runtime/node`
+4. 确保最终存在：`runtime/node/node.exe`
+
+最终可发送目录清单：
+- `双击启动.bat`
+- `server.js`
+- `public` 文件夹
+- `package.json`
+- `runtime` 文件夹
+
+如果你已经放好了免安装 Node，`runtime` 目录里至少应包含：
+- `runtime/node/node.exe`
+- `runtime/node/` 下 Node 自带的其余文件
+
+当前这版通常可以删除且不必发送的内容：
+- `node_modules`
+- `package-lock.json`
+- 临时缓存文件
+
+说明：
+- 你现在这个项目已经不依赖额外 npm 包运行，所以 `node_modules` 通常可以删。
+- `package-lock.json` 主要用于锁定依赖版本；当前没有运行时依赖时，也可以删。
+- 如果你后面又重新安装了新包，再决定是否保留这两个文件。

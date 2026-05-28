@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 网页聊天</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <button id="newChatBtn" class="primary-btn full-width">+ 新建对话</button>
+        </div>
+
+        <div class="settings-panel">
+          <div class="panel-header">
+            <h2>连接设置</h2>
+            <button id="toggleSettingsBtn" class="ghost-btn small-btn" type="button">折叠</button>
+          </div>
+
+          <div id="settingsBody" class="settings-body">
+            <label>
+              <div class="settings-field-header">
+                <span>API 地址</span>
+                <button id="unlockBaseUrlBtn" class="ghost-btn small-btn" type="button">自定义</button>
+              </div>
+              <input id="baseUrlInput" type="url" placeholder="https://aiapi.setbug.cn" />
+            </label>
+            <label>
+              <span>API Key</span>
+              <div class="settings-inline-field">
+                <input id="apiKeyInput" type="password" placeholder="sk-..." />
+                <button id="openApiSiteBtn" class="secondary-btn settings-inline-action" type="button">获取 API 地址</button>
+              </div>
+            </label>
+            <div class="settings-row">
+              <label>
+                <span>主题</span>
+                <select id="themeInput">
+                  <option value="light">亮色</option>
+                  <option value="dark">暗色</option>
+                </select>
+              </label>
+              <label>
+                <span>温度</span>
+                <input id="temperatureInput" type="number" min="0" max="2" step="0.1" value="0.7" />
+              </label>
+            </div>
+            <div class="settings-row">
+              <label>
+                <span>最大 tokens</span>
+                <input id="maxTokensInput" type="number" min="1" step="1" placeholder="可选" />
+              </label>
+              <label>
+                <span>读取模型</span>
+                <button id="loadModelsBtn" class="secondary-btn full-width" type="button">读取模型列表</button>
+              </label>
+            </div>
+            <label class="checkbox-row">
+              <input id="rememberKeyInput" type="checkbox" />
+              <span>本地记住 API Key</span>
+            </label>
+            <label class="checkbox-row">
+              <input id="streamModeInput" type="checkbox" checked />
+              <span>启用流式输出</span>
+            </label>
+            <div class="button-row">
+              <button id="saveSettingsBtn" class="secondary-btn full-width">保存设置</button>
+            </div>
+            <div class="quick-models-panel settings-quick-models">
+              <div class="quick-models-header">
+                <span>快速切换</span>
+                <button id="clearRecentModelsBtn" class="ghost-btn small-btn" type="button">清空</button>
+              </div>
+              <div id="quickModelList" class="quick-model-list"></div>
+            </div>
+            <p class="tip">设置保存在当前浏览器本地。勾选“本地记住 API Key”后才会保存密钥。</p>
+            <p class="tip">支持连续对话、新建对话、文本文件上传、图片上传、导出记录、流式输出、Markdown 渲染。</p>
+          </div>
+        </div>
+
+        <div class="conversation-panel">
+          <div class="conversation-panel-header">
+            <h2>对话列表</h2>
+            <button id="deleteChatBtn" class="ghost-btn">删除当前</button>
+          </div>
+          <div class="conversation-search">
+            <input id="conversationSearchInput" type="search" placeholder="搜索标题或消息内容" />
+          </div>
+          <div id="conversationList" class="conversation-list"></div>
+        </div>
+      </aside>
+
+      <main class="chat-layout">
+        <header class="chat-header">
+          <div class="chat-header-meta sr-only" aria-hidden="true">
+            <h1 id="chatTitle">新对话</h1>
+            <p id="statusText">准备就绪</p>
+            <p id="modelBadge" class="model-badge">当前请求模型：未发送</p>
+          </div>
+          <div class="header-actions">
+            <button id="themeToggleBtn" class="ghost-btn theme-toggle-btn" type="button" aria-label="切换到暗色主题" title="切换到暗色主题">🌙</button>
+            <button id="exportMarkdownBtn" class="secondary-btn">导出 Markdown</button>
+            <button id="exportJsonBtn" class="secondary-btn">导出 JSON</button>
+          </div>
+        </header>
+
+        <section id="messagesDropZone" class="messages-drop-zone">
+          <section id="messagesContainer" class="messages-container"></section>
+          <div id="dropHint" class="drop-hint message-drop-hint">拖拽文件到聊天区域即可上传</div>
+        </section>
+
+        <section id="dropZone" class="composer-panel drop-zone">
+          <div class="composer-bottom-bar">
+            <div class="composer-input-shell">
+              <div class="composer-input-toolbar">
+                <label class="upload-btn upload-btn-compact">
+                  <input id="fileInput" type="file" multiple />
+                  上传文件
+                </label>
+                <div id="attachmentList" class="attachment-list"></div>
+              </div>
+              <textarea
+                id="messageInput"
+                aria-label="消息输入框"
+                placeholder="输入你的问题，Shift + Enter 换行，Enter 发送"
+                rows="1"
+              ></textarea>
+            </div>
+            <div class="composer-side-tools">
+              <label class="composer-inline-control composer-model-control">
+                <span>模型</span>
+                <input id="modelInput" type="text" aria-label="模型" placeholder="模型" />
+              </label>
+              <label class="composer-inline-control composer-select-control">
+                <span>模型列表</span>
+                <select id="modelsSelect" aria-label="模型列表">
+                  <option value="">模型列表</option>
+                </select>
+              </label>
+              <label class="composer-inline-control composer-reasoning-control">
+                <span>推理强度</span>
+                <select id="reasoningEffortInput" aria-label="推理强度">
+                  <option value="auto">推理：自动</option>
+                  <option value="low">推理：Low</option>
+                  <option value="medium">推理：Medium</option>
+                  <option value="high">推理：High</option>
+                </select>
+              </label>
+              <button id="sendBtn" class="primary-btn send-btn" aria-label="发送" title="发送">
+                <span aria-hidden="true">↑</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
