@@ -6,6 +6,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('public','dist',{recursive:true})\""
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('public','dist',{recursive:true})\"",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.95.0"
   }
 }
