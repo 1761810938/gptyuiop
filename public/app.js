@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'openai-compatible-web-chat';
 const DEFAULT_BASE_URL = 'https://aiapi.setbug.cn';
+const DEFAULT_PROXY_BASE_URL = '';
 const DEFAULT_THEME = 'light';
 const DEFAULT_REASONING_EFFORT = 'auto';
 const MAX_RECENT_MODELS = 8;
@@ -92,7 +93,7 @@ function setModelBadge(model) {
 
 function normalizeBaseUrlValue(value) {
   const normalized = String(value || '').trim();
-  return normalized || DEFAULT_BASE_URL;
+  return normalized || DEFAULT_PROXY_BASE_URL || DEFAULT_BASE_URL;
 }
 
 function normalizeApiBaseUrl(value) {
