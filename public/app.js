@@ -103,6 +103,10 @@ function normalizeApiBaseUrl(value) {
     return normalized.endsWith('/v1') ? normalized : `${normalized}/v1`;
   }
 
+  if (!/^https?:\/\//i.test(normalized)) {
+    throw new Error('API 地址必须以 http://、https:// 或 / 开头');
+  }
+
   return normalized.endsWith('/v1') ? normalized : `${normalized}/v1`;
 }
 
@@ -197,9 +201,24 @@ function applySettingsCollapseState() {
   elements.toggleSettingsBtn.setAttribute('aria-expanded', String(!state.settings.settingsCollapsed));
 }
 
+function isCloudflareHostedPage() {
+  return window.location.hostname.endsWith('.workers.dev');
+}
+
+function shouldUseDefaultProxy(baseUrl) {
+  return isCloudflareHostedPage() && (!baseUrl || baseUrl === 'https://aiapi.setbug.cn' || baseUrl === 'https://aiapi.setbug.cn/v1');
+}
+
+function migrateBaseUrlForCurrentHost() {
+  if (shouldUseDefaultProxy(state.settings.baseUrl)) {
+    state.settings.baseUrl = DEFAULT_BASE_URL;
+  }
+}
+
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
+    migrateBaseUrlForCurrentHost();
     createConversation();
     syncSettingsToInputs();
     applyTheme(state.settings.theme);
@@ -222,6 +241,7 @@ function loadState() {
       ? parsed.conversations.map(normalizeConversation)
       : [];
     state.activeConversationId = parsed.activeConversationId || null;
+    migrateBaseUrlForCurrentHost();
   } catch {
     createConversation();
   }
@@ -1351,7 +1371,7 @@ function exportCurrentConversationAsMarkdown() {
 async function loadModels() {
   syncSettingsFromInputs();
   if (!state.settings.baseUrl || !state.settings.apiKey) {
-    setStatus('请先填写 API 地址和 API Key');
+    setStatus('请先填写 API Key');
     if (state.settings.settingsCollapsed) {
       state.settings.settingsCollapsed = false;
       saveState();

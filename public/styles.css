@@ -396,7 +396,7 @@ textarea {
 
 .chat-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 12px;
   padding: 0 4px;
@@ -405,6 +405,19 @@ textarea {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+.chat-header-meta {
+  min-width: 0;
+}
+
+.chat-header-meta h1 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.chat-header-meta #statusText {
+  margin: 0 0 6px;
 }
 
 .header-actions {
